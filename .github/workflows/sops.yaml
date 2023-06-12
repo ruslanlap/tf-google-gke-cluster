@@ -1,4 +1,5 @@
-name: Encrypt Secret Manifest
+name: Encrypt Secrets
+
 on:
   push:
     branches:
@@ -9,35 +10,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install SOPS
-        run: |
-          curl -LO https://github.com/mozilla/sops/releases/download/v3.7.3/sops_3.7.3_amd64.deb
-          sudo dpkg -i sops_3.7.3_amd64.deb
+      - name: Generate secret manifest
+        run: echo "SECRET_VALUE=secret" > secret_manifest.txt
 
-      - name: Generate Secret Manifest
+      - name: Set up sops
+        uses: mozilla/sops-action@v4
+
+      - name: Encrypt secret manifest
+        run: |
+          sops --encrypt --in-place secret_manifest.txt
+        env:
+          SOPS_PGP_FP: ${{ secrets.SOPS_PGP_FP }}
+
+      - name: Store encrypted secret manifest
+        run: |
+          # Збереження зашифрованого секретного маніфесту у файлі
+          cp secret_manifest.txt encrypted_secret_manifest.txt
+
+      - name: Upload encrypted secret manifest
+        uses: actions/upload-artifact@v2
+        with:
+          name: encrypted-secret-manifest
+          path: encrypted_secret_manifest.txt
+
+      - name: Store TELE_TOKEN in GitHub Secrets
+        run: |
+          echo $TELE_TOKEN >> $GITHUB_ENV
         env:
           TELE_TOKEN: ${{ secrets.TELE_TOKEN }}
-        run: |
-          echo "apiVersion: v1" > secret.yaml
-          echo "data:" >> secret.yaml
-          echo "  token: $(echo -n $TELE_TOKEN | base64)" >> secret.yaml
-
-      - name: Set KMS Path
-        run: |
-          export KMS_PATH="projects/tf-git/locations/global/keyRings/sops-demo/cryptoKeys/my-encryption-key"
-
-      - name: Encrypt Secret Manifest
-        run: |
-          sops --encrypt --encrypted-regex '^(data)$' --gcp-kms $KMS_PATH secret.yaml --output secret.enc.yaml
-
-      - name: Set Encrypted Manifest Output
-        id: set-output
-        run: |
-          echo "::set-output name=encrypted_manifest::$(cat secret.enc.yaml)"
-
-      - name: Create Secret
-        run: |
-          echo "::set-secret name=TELE_TOKEN::${{ secrets.TELE_TOKEN }}"
