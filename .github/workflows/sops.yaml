@@ -23,7 +23,7 @@ jobs:
 
       - name: Generate and Encrypt Secret Manifest
         env:
-          MANIFEST_FILE: clusters/demo/secret-enc.yaml
+          MANIFEST_FILE: clusters/demo/secret_partial.enc.yaml
           TELE_TOKEN: ${{ secrets.TELE_TOKEN }}
         run: |
           echo "apiVersion: v1" > $MANIFEST_FILE
