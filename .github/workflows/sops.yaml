@@ -1,22 +1,43 @@
-name: Generate and Encrypt Manifest
+name: Encrypt and store secrets
+
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
-  build:
+  encrypt_and_store:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Generate Manifest
-        run: ./generate_manifest.sh
-
-      - name: Encrypt Manifest
-        env:
-          MANIFEST_TOKEN: ${{ secrets.MANIFEST_TOKEN }}
+      - name: Install sops
         run: |
-          echo $MANIFEST_TOKEN | gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase-fd 0 --output secret-manifest.gpg manifest.txt
+          curl -s https://github.com/mozilla/sops/releases/download/v3.7.1/sops-v3.7.1.linux -o sops
+          chmod +x ./sops
+          sudo mv ./sops /usr/local/bin/sops
+
+      - name: Encrypt secrets
+        run: |
+          # Generate and encrypt your secret manifest using sops
+          sops --encrypt .github/workflows/secrets.yaml > encrypted_secrets.yaml
+
+      - name: Authenticate with GCP
+        uses: google-github-actions/setup-gcloud@v0.6.0
+        with:
+          project_id: YOUR_PROJECT_ID
+          service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Store encrypted secret in GCP Secret Manager
+        run: |
+          # Get the encrypted secret from the file
+          encrypted_secret=$(cat encrypted_secrets.yaml)
+
+          # Store the encrypted secret in GCP Secret Manager
+          echo $encrypted_secret | gcloud secrets create github_token --data-file=-
+
+      - name: Cleanup
+        run: |
+          # Remove the encrypted secret file
+          rm encrypted_secrets.yaml
