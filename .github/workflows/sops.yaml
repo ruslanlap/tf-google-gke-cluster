@@ -17,23 +17,30 @@ jobs:
           curl -LO https://github.com/mozilla/sops/releases/download/v3.7.3/sops_3.7.3_amd64.deb
           sudo dpkg -i sops_3.7.3_amd64.deb
 
-      - name: Set KMS Path
-        run: |
-          export KMS_PATH="projects/tf-git/locations/global/keyRings/sops-demo/cryptoKeys/my-encryption-key"
-
-      - name: Generate and Encrypt Secret Manifest
+      - name: Generate Secret Manifest
+        id: generate-manifest
         env:
-          MANIFEST_FILE: clusters/demo/secret-enc.yaml
           TELE_TOKEN: ${{ secrets.TELE_TOKEN }}
         run: |
-          echo "apiVersion: v1" > $MANIFEST_FILE
-          echo "data:" >> $MANIFEST_FILE
-          echo "  token: $(echo -n $TELE_TOKEN | base64)" >> $MANIFEST_FILE
+          echo "apiVersion: v1" > secret.yaml
+          echo "data:" >> secret.yaml
+          echo "  token: $(echo -n $TELE_TOKEN | base64)" >> secret.yaml
 
-          sops --encrypt --encrypted-regex '^(data)$' --gcp-kms $KMS_PATH $MANIFEST_FILE --output secret_partial.enc.yaml
+      - name: Encrypt Secret Manifest
+        id: encrypt-manifest
+        env:
+          MANIFEST_FILE: secret.yaml
+          KMS_PATH: ${{ secrets.KMS_PATH }}
+        run: |
+          sops --encrypt --encrypted-regex '^(data)$' --gcp-kms $KMS_PATH $MANIFEST_FILE --output secret.enc.yaml
 
-          echo "::set-output name=encrypted_manifest::$(cat secret_partial.enc.yaml)"
+      - name: Set Encrypted Manifest Output
+        id: set-output
+        run: |
+          echo "::set-output name=encrypted_manifest::$(cat secret.enc.yaml)"
 
       - name: Create Secret
-        run: |
-          echo "::set-secret name=TELE_TOKEN::${{ secrets.TELE_TOKEN }}"
+        uses: actions/upload-artifact@v2
+        with:
+          name: encrypted-secret-manifest
+          path: secret.enc.yaml
