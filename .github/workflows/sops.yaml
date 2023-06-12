@@ -16,7 +16,11 @@ jobs:
       - name: Generate secret manifest
         run: echo "SECRET_VALUE=secret" > secret_manifest.txt
 
-      - name: Set up sops
+      - - name: Install SOPS
+        run: |
+          curl -LO https://github.com/mozilla/sops/releases/download/v3.7.3/sops_3.7.3_amd64.deb
+          sudo dpkg -i sops_3.7.3_amd64.deb
+
         uses: mozilla/sops-action@v4
 
       - name: Encrypt secret manifest
