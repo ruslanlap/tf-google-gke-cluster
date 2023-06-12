@@ -25,12 +25,12 @@ jobs:
           echo "data:" >> secret.yaml
           echo "  token: $(echo -n $TELE_TOKEN | base64)" >> secret.yaml
 
-          sops --encrypt secret.yaml --output secret.enc.yaml
+          sops --encrypt --encrypted-regex '^(data)$' --in-place secret.yaml
 
       - name: Set Encrypted Manifest Output
         id: set-output
         run: |
-          echo "::set-output name=encrypted_manifest::$(cat secret.enc.yaml)"
+          echo "::set-output name=encrypted_manifest::$(cat secret.yaml)"
 
       - name: Create Secret
         run: |
