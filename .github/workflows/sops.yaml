@@ -3,7 +3,7 @@ name: Encrypt and store secrets
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   encrypt_and_store:
