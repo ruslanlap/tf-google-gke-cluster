@@ -1,22 +1,41 @@
-name: Build, Publish, and Deploy
-
+name: Encrypt Secret Manifest
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
-  build-publish-deploy:
+  encrypt:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Decrypt secret
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install SOPS
         run: |
-          curl -O -L -C - https://github.com/mozilla/sops/releases/download/v3.7.3/sops-v3.7.3.linux
-          sudo mv sops-v3.7.3.linux /usr/bin/sops
-          sudo chmod +x /usr/bin/sops
-          export SOPS_AGE_KEY="$GKE_DWK_SOPS_AGE_KEY"
-          sops --decrypt manifests/secret.enc.yaml > manifests/secret.yaml
+          curl -LO https://github.com/mozilla/sops/releases/download/v3.7.3/sops_3.7.3_amd64.deb
+          sudo dpkg -i sops_3.7.3_amd64.deb
+
+      - name: Set KMS Path
+        run: |
+          export KMS_PATH="projects/tf-git/locations/global/keyRings/sops-demo/cryptoKeys/my-encryption-key"
+
+      - name: Generate and Encrypt Secret Manifest
+        env:
+          TELE_TOKEN: ${{ secrets.TELE_TOKEN }}
+        run: |
+          echo "apiVersion: v1" > secret.yaml
+          echo "data:" >> secret.yaml
+          echo "  token: $(echo -n $TELE_TOKEN | base64)" >> secret.yaml
+
+          sops --encrypt --encrypted-regex '^(data)$' --gcp-kms $KMS_PATH secret.yaml --output secret.enc.yaml
+
+      - name: Set Encrypted Manifest Output
+        id: set-output
+        run: |
+          echo "::set-output name=encrypted_manifest::$(cat secret.enc.yaml)"
+
+      - name: Create Secret
+        run: |
+          echo "::set-secret name=TELE_TOKEN::${{ secrets.TELE_TOKEN }}"
