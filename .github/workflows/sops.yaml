@@ -21,7 +21,7 @@ jobs:
         run: |
           export KMS_PATH="projects/tf-git/locations/global/keyRings/sops-demo/cryptoKeys/my-encryption-key"
 
-      - name: Generate Secret Manifest
+      - name: Generate and Encrypt Secret Manifest
         env:
           MANIFEST_FILE: clusters/demo/secret-enc.yaml
           TELE_TOKEN: ${{ secrets.TELE_TOKEN }}
@@ -30,12 +30,8 @@ jobs:
           echo "data:" >> $MANIFEST_FILE
           echo "  token: $(echo -n $TELE_TOKEN | base64)" >> $MANIFEST_FILE
 
-      - name: Encrypt Secret Manifest
-        env:
-          MANIFEST_FILE: clusters/demo/secret-enc.yaml
-          TELE_TOKEN: ${{ secrets.TELE_TOKEN }}
-        run: |
-          sops --encrypt --encrypted-regex '^(data)$' --gcp-kms $KMS_PATH $MANIFEST_FILE > secret_partial.enc.yaml
+          sops --encrypt --encrypted-regex '^(data)$' --gcp-kms $KMS_PATH $MANIFEST_FILE --output secret_partial.enc.yaml
+
           echo "::set-output name=encrypted_manifest::$(cat secret_partial.enc.yaml)"
 
       - name: Create Secret
