@@ -1,37 +1,22 @@
-name: Encrypt Secret Manifest
+name: Generate and Encrypt Manifest
 on:
   push:
     branches:
       - main
 
 jobs:
-  encrypt:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Install SOPS
-        run: |
-          curl -LO https://github.com/mozilla/sops/releases/download/v3.7.3/sops_3.7.3_amd64.deb
-          sudo dpkg -i sops_3.7.3_amd64.deb
+      - name: Generate Manifest
+        run: ./generate_manifest.sh
 
-      - name: Generate and Encrypt Secret Manifest
+      - name: Encrypt Manifest
         env:
-          TELE_TOKEN: ${{ secrets.TELE_TOKEN }}
+          MANIFEST_TOKEN: ${{ secrets.MANIFEST_TOKEN }}
         run: |
-          echo "apiVersion: v1" > secret.yaml
-          echo "data:" >> secret.yaml
-          echo "  token: $(echo -n $TELE_TOKEN | base64)" >> secret.yaml
-
-          sops --encrypt --encrypted-regex '^(data)$' --in-place secret.yaml
-
-      - name: Set Encrypted Manifest Output
-        id: set-output
-        run: |
-          echo "::set-output name=encrypted_manifest::$(cat secret.yaml)"
-
-      - name: Create Secret
-        run: |
-          echo "::set-secret name=TELE_TOKEN::${{ secrets.TELE_TOKEN }}"
+          echo $MANIFEST_TOKEN | gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase-fd 0 --output secret-manifest.gpg manifest.txt
