@@ -17,10 +17,6 @@ jobs:
           curl -LO https://github.com/mozilla/sops/releases/download/v3.7.3/sops_3.7.3_amd64.deb
           sudo dpkg -i sops_3.7.3_amd64.deb
 
-      - name: Set KMS Path
-        run: |
-          export KMS_PATH="projects/tf-git/locations/global/keyRings/sops-demo/cryptoKeys/my-encryption-key"
-
       - name: Generate and Encrypt Secret Manifest
         env:
           TELE_TOKEN: ${{ secrets.TELE_TOKEN }}
@@ -29,7 +25,7 @@ jobs:
           echo "data:" >> secret.yaml
           echo "  token: $(echo -n $TELE_TOKEN | base64)" >> secret.yaml
 
-          sops --encrypt --encrypted-regex '^(data)$' --gcp-kms $KMS_PATH secret.yaml --output secret.enc.yaml
+          sops --encrypt secret.yaml --output secret.enc.yaml
 
       - name: Set Encrypted Manifest Output
         id: set-output
