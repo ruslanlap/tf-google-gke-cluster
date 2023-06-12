@@ -1,13 +1,13 @@
 jobs:
-    build-publish-deploy:
-        name: Build, Publish and Deploy
-        runs-on: ubuntu-latest
+  build-publish-deploy:
+    name: Build, Publish, and Deploy
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Decrypt secret
-              run: |-
-                  curl -O -L -C - https://github.com/mozilla/sops/releases/download/v3.7.3/sops-v3.7.3.linux
-                  sudo mv sops-v3.7.3.linux /usr/bin/sops
-                  sudo chmod +x /usr/bin/sops
-                  export SOPS_AGE_KEY=${{ secrets.GKE_DWK_SOPS_AGE_KEY }}
-                  sops --decrypt manifests/secret.enc.yaml > manifests/secret.yaml
+    steps:
+      - name: Decrypt secret
+        run: |
+          curl -O -L -C - https://github.com/mozilla/sops/releases/download/v3.7.3/sops-v3.7.3.linux
+          sudo mv sops-v3.7.3.linux /usr/bin/sops
+          sudo chmod +x /usr/bin/sops
+          export SOPS_AGE_KEY="$GKE_DWK_SOPS_AGE_KEY"
+          sops --decrypt manifests/secret.enc.yaml > manifests/secret.yaml
